@@ -9,14 +9,44 @@
     <h1 class="text-2xl font-bold text-white mb-2">Willkommen beim Wetterdienst</h1>
     <p class="text-slate-400">Wähle einen Ort auf der Karte aus, um seine Koordinaten anzuzeigen.</p>
     <div id="map" class="mt-6 overflow-hidden rounded-lg border border-slate-700" style="height: 420px;"
+         data-selected-latitude="{{ latitude if latitude is defined else '' }}"
+         data-selected-longitude="{{ longitude if longitude is defined else '' }}"
          role="application" aria-label="Karte zur Auswahl eines Ortes in Deutschland"></div>
     <p id="selection-hint" class="mt-4 text-slate-400" aria-live="polite">
         Klicke auf die Karte, um einen Ort auszuwählen.
     </p>
-    <button id="show-weather-data" type="button" class="mt-4 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400" disabled>
-        Wetterdaten ansehen
-    </button>
-    <p id="coordinates" class="mt-4 text-emerald-400" aria-live="polite" hidden></p>
+    <form action="{{ url_for('main.nearby_stations') }}" method="get">
+        <input id="latitude" type="hidden" name="latitude"
+               value="{{ latitude if latitude is defined else '' }}">
+        <input id="longitude" type="hidden" name="longitude"
+               value="{{ longitude if longitude is defined else '' }}">
+        <button id="show-weather-data" type="submit"
+                class="mt-4 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400"
+                {% if latitude is not defined %}disabled{% endif %}>
+            Wetterdaten ansehen
+        </button>
+    </form>
+    {% if latitude is defined %}
+        <p class="mt-4 text-emerald-400" aria-live="polite">
+            Ausgewählter Ort: {{ '%.6f'|format(latitude) }}, {{ '%.6f'|format(longitude) }}
+        </p>
+        <section class="mt-4" aria-live="polite">
+            <h2 class="font-semibold text-white">Stationen im Umkreis von 50 km</h2>
+            {% if stations %}
+                <p class="mt-2 text-slate-300">{{ stations|length }} Station(en) gefunden:</p>
+                <ul class="mt-2 list-inside list-disc text-slate-300">
+                    {% for station in stations %}
+                        <li>{{ station }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="mt-2 text-slate-300">Keine Stationen im Umkreis gefunden.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+    {% if error is defined %}
+        <p class="mt-4 text-emerald-400" role="alert">{{ error }}</p>
+    {% endif %}
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <p class="mt-4 text-emerald-400">{{ messages|join(' ') }}</p>

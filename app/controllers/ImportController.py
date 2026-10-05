@@ -31,7 +31,7 @@ class ImportController:
                     bis_datum=self._parse_date(line[15:23], line_number),
                     stationshoehe=int(line[24:38].strip()),
                     geo_breite=float(line[43:50].strip()),
-                    geo_laenge=float(line[54:61].strip()),
+                    geo_laenge=float(line[50:61].strip()),
                     stationsname=line[61:102].strip(),
                     bundesland=line[102:143].strip(),
                     abgabe=line[143:149].strip() or None,
