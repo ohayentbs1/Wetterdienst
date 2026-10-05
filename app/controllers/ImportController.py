@@ -1,5 +1,7 @@
 from datetime import datetime
 from urllib.request import urlopen
+import ssl
+import certifi
 
 from app import db
 from app.models import Station
@@ -13,7 +15,9 @@ STATION_FILE_URL = (
 
 class ImportController:
     def import_stations(self):
-        with urlopen(STATION_FILE_URL, timeout=30) as response:
+        context = ssl.create_default_context(cafile=certifi.where())
+
+        with urlopen(STATION_FILE_URL, timeout=30, context=context) as response:
             content = response.read().decode('latin-1')
 
         lines = content.splitlines()
