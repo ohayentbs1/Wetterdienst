@@ -1,16 +1,13 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from app.controllers.ImportController import ImportController
 from app.controllers.StationController import StationController
-from app.models import WetterEintrag
 
 main = Blueprint('main', __name__)
 
 
 @main.route('/')
 def index():
-    # Beispielhaftes Auslesen der Einträge aus der Datenbank
-    eintraege = WetterEintrag.query.order_by(WetterEintrag.zeitstempel.desc()).all()
-    return render_template('index.html', eintraege=eintraege)
+    return render_template('index.html')
 
 
 @main.route('/stations/import', methods=['POST'])
@@ -29,14 +26,11 @@ def nearby_stations():
     except (KeyError, ValueError):
         return render_template(
             'index.html',
-            eintraege=[],
             error='Ungültige Koordinaten. Bitte wähle einen Ort auf der Karte aus.',
         ), 400
 
-    eintraege = WetterEintrag.query.order_by(WetterEintrag.zeitstempel.desc()).all()
     return render_template(
         'index.html',
-        eintraege=eintraege,
         latitude=latitude,
         longitude=longitude,
         stations=stations,

@@ -41,4 +41,7 @@ class StationController:
                 nearby.append((distance_km, station.stationsname))
 
         nearby.sort(key=lambda entry: (entry[0], entry[1]))
-        return [name for _, name in nearby]
+        return [
+            {'name': name, 'distance_km': distance_km}
+            for distance_km, name in nearby
+        ]

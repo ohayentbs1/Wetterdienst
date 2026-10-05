@@ -36,7 +36,7 @@
                 <p class="mt-2 text-slate-300">{{ stations|length }} Station(en) gefunden:</p>
                 <ul class="mt-2 list-inside list-disc text-slate-300">
                     {% for station in stations %}
-                        <li>{{ station }}</li>
+                        <li>{{ station.name }} ({{ '%.1f'|format(station.distance_km)|replace('.', ',') }} km)</li>
                     {% endfor %}
                 </ul>
             {% else %}
