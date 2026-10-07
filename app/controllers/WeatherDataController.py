@@ -1,0 +1,109 @@
+import csv
+import re
+import zipfile
+from datetime import datetime
+from io import TextIOWrapper
+from pathlib import Path
+from urllib.request import urlopen
+
+from flask import current_app
+
+from app import db
+from app.models import WeatherData
+
+
+DWD_URL = (
+    'https://opendata.dwd.de/climate_environment/CDC/observations_germany/'
+    'climate/daily/kl/historical/'
+)
+WEATHER_FIELDS = (
+    'QN_3', 'FX', 'FM', 'QN_4', 'RSK', 'RSKF', 'SDK', 'SHK_TAG',
+    'NM', 'VPM', 'PM', 'TMK', 'UPM', 'TXK', 'TNK', 'TGK',
+)
+INTEGER_FIELDS = {'QN_3', 'QN_4', 'RSKF', 'SHK_TAG'}
+BATCH_SIZE = 1000
+
+
+class WeatherDataController:
+    def import_for_stations(self, stations):
+        archive_directory = Path(current_app.config['DWD_ARCHIVE_DIR'])
+        archive_directory.mkdir(parents=True, exist_ok=True)
+        station_ids = {station['station_id'] for station in stations}
+
+        with urlopen(DWD_URL, timeout=30) as response:
+            directory = response.read().decode('utf-8')
+
+        archives = re.findall(
+            r'tageswerte_KL_\d{5}_\d{8}_\d{8}_hist\.zip',
+            directory,
+        )
+        imported = 0
+        for filename in archives:
+            station_id = int(filename.split('_')[2])
+            if station_id not in station_ids:
+                continue
+
+            archive_path = archive_directory / filename
+            if not archive_path.exists():
+                with urlopen(DWD_URL + filename, timeout=60) as response:
+                    archive_path.write_bytes(response.read())
+
+            with zipfile.ZipFile(archive_path) as archive:
+                product_name = next(
+                    name for name in archive.namelist()
+                    if Path(name).name.startswith('produkt_klima_tag')
+                )
+                with archive.open(product_name) as product:
+                    reader = csv.DictReader(
+                        TextIOWrapper(product, encoding='latin-1', newline=''),
+                        delimiter=';',
+                    )
+                    headers = next(reader.reader)
+                    reader.fieldnames = [header.strip() for header in headers]
+                    imported += self._save_rows(reader, station_id)
+
+        return imported
+
+    @staticmethod
+    def _save_rows(reader, station_id):
+        existing_dates = set(
+            db.session.execute(
+                db.select(WeatherData.MESS_DATUM).where(
+                    WeatherData.STATIONS_ID == station_id
+                )
+            ).scalars()
+        )
+        imported = 0
+
+        pending = 0
+        for row in reader:
+            values = {name.strip(): value.strip() for name, value in row.items() if name}
+            date = datetime.strptime(values['MESS_DATUM'], '%Y%m%d').date()
+            if date in existing_dates:
+                continue
+
+            observation = WeatherData()
+            observation.STATIONS_ID = station_id
+            observation.MESS_DATUM = date
+            for field in WEATHER_FIELDS:
+                value = values[field]
+                if not value:
+                    number = None
+                elif value == '-999':
+                    number = 0
+                elif field in INTEGER_FIELDS:
+                    number = int(float(value))
+                else:
+                    number = float(value)
+                setattr(observation, field, number)
+
+            db.session.add(observation)
+            existing_dates.add(date)
+            imported += 1
+            pending += 1
+            if pending == BATCH_SIZE:
+                db.session.commit()
+                pending = 0
+
+        db.session.commit()
+        return imported

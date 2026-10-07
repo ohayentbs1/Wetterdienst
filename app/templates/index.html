@@ -47,6 +47,9 @@
     {% if error is defined %}
         <p class="mt-4 text-emerald-400" role="alert">{{ error }}</p>
     {% endif %}
+    {% if import_message is defined %}
+        <p class="mt-4 text-emerald-400" aria-live="polite">{{ import_message }}</p>
+    {% endif %}
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <p class="mt-4 text-emerald-400">{{ messages|join(' ') }}</p>

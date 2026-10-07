@@ -38,10 +38,14 @@ class StationController:
                 (station.geo_breite, station.geo_laenge),
             ).km
             if distance_km <= self.SEARCH_RADIUS_KM:
-                nearby.append((distance_km, station.stationsname))
+                nearby.append((distance_km, station))
 
-        nearby.sort(key=lambda entry: (entry[0], entry[1]))
+        nearby.sort(key=lambda entry: (entry[0], entry[1].stationsname))
         return [
-            {'name': name, 'distance_km': distance_km}
-            for distance_km, name in nearby
+            {
+                'station_id': station.id,
+                'name': station.stationsname,
+                'distance_km': distance_km,
+            }
+            for distance_km, station in nearby
         ]

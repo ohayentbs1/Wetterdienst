@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -12,6 +14,9 @@ def create_app():
     app.config['SECRET_KEY'] = 'dev-key-change-in-production'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wetterdienst.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['DWD_ARCHIVE_DIR'] = str(
+        Path(__file__).resolve().parent.parent / 'storage' / 'tmp'
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)

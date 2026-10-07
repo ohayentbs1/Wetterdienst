@@ -1,6 +1,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from app.controllers.ImportController import ImportController
 from app.controllers.StationController import StationController
+from app.controllers.WeatherDataController import WeatherDataController
 
 main = Blueprint('main', __name__)
 
@@ -29,9 +30,11 @@ def nearby_stations():
             error='Ungültige Koordinaten. Bitte wähle einen Ort auf der Karte aus.',
         ), 400
 
+    imported_count = WeatherDataController().import_for_stations(stations)
     return render_template(
         'index.html',
         latitude=latitude,
         longitude=longitude,
         stations=stations,
+        import_message=f'{imported_count} neue Wetterdatensätze importiert.',
     )

@@ -52,3 +52,5 @@ flask run
 ```
 
 Die Anwendung ist anschließend unter <http://127.0.0.1:5000> erreichbar. `flask db upgrade` wendet die vorhandenen Migrationen an und legt die SQLite-Datenbank bei Bedarf an. Der Tailwind-Watcher aktualisiert `app/static/css/style.css`, wenn sich die CSS-Eingabe oder Templates ändern.
+
+Beim Klick auf „Wetterdaten ansehen“ lädt die Anwendung synchron die passenden historischen DWD-Tagesdaten der Stationen im 50-km-Umkreis, speichert die ZIP-Dateien in `storage/tmp` im Projektverzeichnis und importiert die enthaltenen Beobachtungen fortlaufend in die Datenbank.
