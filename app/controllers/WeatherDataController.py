@@ -1,6 +1,7 @@
 import csv
 import re
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import TextIOWrapper
 from pathlib import Path
@@ -22,6 +23,7 @@ WEATHER_FIELDS = (
 )
 INTEGER_FIELDS = {'QN_3', 'QN_4', 'RSKF', 'SHK_TAG'}
 BATCH_SIZE = 1000
+MAX_DOWNLOAD_WORKERS = 5
 
 
 class WeatherDataController:
@@ -37,17 +39,20 @@ class WeatherDataController:
             r'tageswerte_KL_\d{5}_\d{8}_\d{8}_hist\.zip',
             directory,
         )
+        matching_archives = [
+            filename for filename in archives
+            if int(filename.split('_')[2]) in station_ids
+        ]
+        with ThreadPoolExecutor(max_workers=MAX_DOWNLOAD_WORKERS) as executor:
+            archive_paths = executor.map(
+                self._download_archive,
+                (archive_directory for _ in matching_archives),
+                matching_archives,
+            )
+
         imported = 0
-        for filename in archives:
+        for filename, archive_path in zip(matching_archives, archive_paths):
             station_id = int(filename.split('_')[2])
-            if station_id not in station_ids:
-                continue
-
-            archive_path = archive_directory / filename
-            if not archive_path.exists():
-                with urlopen(DWD_URL + filename, timeout=60) as response:
-                    archive_path.write_bytes(response.read())
-
             with zipfile.ZipFile(archive_path) as archive:
                 product_name = next(
                     name for name in archive.namelist()
@@ -65,6 +70,14 @@ class WeatherDataController:
         return imported
 
     @staticmethod
+    def _download_archive(archive_directory, filename):
+        archive_path = archive_directory / filename
+        if not archive_path.exists():
+            with urlopen(DWD_URL + filename, timeout=60) as response:
+                archive_path.write_bytes(response.read())
+        return archive_path
+
+    @staticmethod
     def _save_rows(reader, station_id):
         existing_dates = set(
             db.session.execute(
@@ -74,17 +87,17 @@ class WeatherDataController:
             ).scalars()
         )
         imported = 0
-
-        pending = 0
+        pending_rows = []
         for row in reader:
             values = {name.strip(): value.strip() for name, value in row.items() if name}
             date = datetime.strptime(values['MESS_DATUM'], '%Y%m%d').date()
             if date in existing_dates:
                 continue
 
-            observation = WeatherData()
-            observation.STATIONS_ID = station_id
-            observation.MESS_DATUM = date
+            observation = {
+                'STATIONS_ID': station_id,
+                'MESS_DATUM': date,
+            }
             for field in WEATHER_FIELDS:
                 value = values[field]
                 if not value:
@@ -95,15 +108,17 @@ class WeatherDataController:
                     number = int(float(value))
                 else:
                     number = float(value)
-                setattr(observation, field, number)
+                observation[field] = number
 
-            db.session.add(observation)
+            pending_rows.append(observation)
             existing_dates.add(date)
             imported += 1
-            pending += 1
-            if pending == BATCH_SIZE:
+            if len(pending_rows) == BATCH_SIZE:
+                db.session.execute(db.insert(WeatherData), pending_rows)
                 db.session.commit()
-                pending = 0
+                pending_rows = []
 
+        if pending_rows:
+            db.session.execute(db.insert(WeatherData), pending_rows)
         db.session.commit()
         return imported
