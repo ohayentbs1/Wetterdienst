@@ -28,7 +28,7 @@ Python-Abhängigkeiten und Tailwind-Entwicklungswerkzeuge installieren:
 
 ```sh
 python -m pip install -r requirements.txt
-npm ci
+npm install
 ```
 
 ## Entwicklungsserver starten
@@ -39,10 +39,16 @@ Tailwind und Flask laufen während der Entwicklung parallel in zwei Terminals. I
 npm run watch
 ```
 
-Im zweiten Terminal die virtuelle Python-Umgebung aktivieren (siehe oben) und die Flask-Anwendung starten:
+Im zweiten Terminal die virtuelle Python-Umgebung aktivieren (siehe oben). Bei einer neuen oder leeren Datenbank zuerst das Datenbankschema anlegen:
 
 ```sh
-python run.py
+flask db upgrade
 ```
 
-Die Anwendung ist anschließend unter <http://127.0.0.1:5000> erreichbar. Beim Start legt Flask die SQLite-Datenbank bei Bedarf automatisch an. Der Tailwind-Watcher aktualisiert `app/static/css/style.css`, wenn sich die CSS-Eingabe oder Templates ändern.
+Anschließend den Flask-Entwicklungsserver starten:
+
+```sh
+flask run
+```
+
+Die Anwendung ist anschließend unter <http://127.0.0.1:5000> erreichbar. `flask db upgrade` wendet die vorhandenen Migrationen an und legt die SQLite-Datenbank bei Bedarf an. Der Tailwind-Watcher aktualisiert `app/static/css/style.css`, wenn sich die CSS-Eingabe oder Templates ändern.
