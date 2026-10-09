@@ -19,9 +19,6 @@ class StationController:
         'climate/daily/kl/historical/KL_Tageswerte_Beschreibung_Stationen.txt'
     )
 
-    def index(self):
-        return render_template('index.html')
-
     def import_stations(self):
         context = ssl.create_default_context(cafile=certifi.where())
 
