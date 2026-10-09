@@ -15,7 +15,7 @@
     <p id="selection-hint" class="mt-4 text-slate-400" aria-live="polite">
         Klicke auf die Karte, um einen Ort auszuwählen.
     </p>
-    <form action="{{ url_for('main.nearby_stations') }}" method="get">
+    <form action="{{ url_for('main.show_weather_data') }}" method="get">
         <input id="latitude" type="hidden" name="latitude"
                value="{{ latitude if latitude is defined else '' }}">
         <input id="longitude" type="hidden" name="longitude"
