@@ -116,10 +116,8 @@ class WeatherDataImportService:
             }
             for field in WEATHER_FIELDS:
                 value = values[field]
-                if not value:
+                if not value or value == '-999':
                     number = None
-                elif value == '-999':
-                    number = 0
                 elif field in INTEGER_FIELDS:
                     number = int(float(value))
                 else:

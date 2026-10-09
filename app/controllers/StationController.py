@@ -1,6 +1,6 @@
 import math
 import ssl
-from datetime import datetime
+from datetime import date, datetime
 from urllib.request import urlopen
 
 import certifi
@@ -9,11 +9,13 @@ from geopy.distance import geodesic
 
 from app import db
 from app.models import Station
+from app.services.ChartService import ChartService
 from app.services.WeatherDataImportService import WeatherDataImportService
 
 
 class StationController:
     SEARCH_RADIUS_KM = 50
+    MAX_STATIONS = 5
     STATION_FILE_URL = (
         'https://opendata.dwd.de/climate_environment/CDC/observations_germany/'
         'climate/daily/kl/historical/KL_Tageswerte_Beschreibung_Stationen.txt'
@@ -60,20 +62,56 @@ class StationController:
         try:
             latitude = float(request.args['latitude'])
             longitude = float(request.args['longitude'])
-            nearby_station_results = self.get_nearby_stations(
-                latitude,
-                longitude,
-            )
         except (KeyError, ValueError):
             return render_template(
                 'index.html',
                 error='Ungültige Koordinaten. Bitte wähle einen Ort auf der Karte aus.',
+                start_date=request.args.get('start_date', ''),
+                end_date=request.args.get('end_date', ''),
             ), 400
 
+        try:
+            start_date = self._parse_selected_date(request.args['start_date'])
+            end_date = self._parse_selected_date(request.args['end_date'])
+            if start_date > end_date:
+                return render_template(
+                    'index.html',
+                    latitude=latitude,
+                    longitude=longitude,
+                    start_date=request.args.get('start_date', ''),
+                    end_date=request.args.get('end_date', ''),
+                    error='Das Startdatum muss vor oder auf dem Enddatum liegen.',
+                ), 400
+        except (KeyError, ValueError):
+            return render_template(
+                'index.html',
+                latitude=latitude,
+                longitude=longitude,
+                start_date=request.args.get('start_date', ''),
+                end_date=request.args.get('end_date', ''),
+                error='Bitte gib ein gültiges Start- und Enddatum an.',
+            ), 400
+
+        try:
+            nearby_station_results = self.get_nearby_stations(
+                latitude,
+                longitude,
+            )
+        except ValueError:
+            return render_template(
+                'index.html',
+                error='Ungültige Koordinaten. Bitte wähle einen Ort auf der Karte aus.',
+                start_date=request.args.get('start_date', ''),
+                end_date=request.args.get('end_date', ''),
+            ), 400
+
+        nearby_station_results = nearby_station_results[:self.MAX_STATIONS]
         station_objects = []
         stations_for_display = []
+        station_distances = {}
         for station, distance_km in nearby_station_results:
             station_objects.append(station)
+            station_distances[station.id] = distance_km
             stations_for_display.append({
                 'name': station.stationsname,
                 'distance_km': distance_km,
@@ -82,13 +120,33 @@ class StationController:
         imported_count = WeatherDataImportService().import_for_stations(
             station_objects
         )
+        chart_data = ChartService().get_chart_data(
+            station_distances,
+            start_date,
+            end_date,
+        )
+        has_chart_data = any(
+            value is not None
+            for dataset in chart_data['datasets']
+            for value in dataset['data']
+        )
         return render_template(
             'index.html',
             latitude=latitude,
             longitude=longitude,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
             stations=stations_for_display,
             import_message=f'{imported_count} neue Wetterdatensätze importiert.',
+            chart_data=chart_data if has_chart_data else None,
         )
+
+    @staticmethod
+    def _parse_selected_date(value: str) -> date:
+        parsed_date = datetime.strptime(value, '%Y-%m-%d').date()
+        if parsed_date.isoformat() != value:
+            raise ValueError('Ungültiges Datumsformat.')
+        return parsed_date
 
     def get_nearby_stations(
         self,

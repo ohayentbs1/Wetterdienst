@@ -1,0 +1,11 @@
+<section class="mt-8 rounded-xl border border-slate-700 bg-slate-900 p-4"
+         aria-labelledby="weather-chart-title">
+    <h2 id="weather-chart-title" class="mb-4 text-lg font-semibold text-white">
+        Gewichtete Wetterwerte vom {{ start_date }} bis {{ end_date }}
+    </h2>
+    <div class="relative h-128">
+        <canvas id="weather-chart" role="img"
+                aria-label="Liniendiagramm der gewichteten Wetterwerte nach Tag"></canvas>
+    </div>
+    <script id="weather-chart-data" type="application/json">{{ chart_data|tojson }}</script>
+</section>

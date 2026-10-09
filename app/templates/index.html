@@ -7,7 +7,7 @@
 {% block content %}
 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
     <h1 class="text-2xl font-bold text-white mb-2">Willkommen beim Wetterdienst</h1>
-    <p class="text-slate-400">Wähle einen Ort auf der Karte aus, um seine Koordinaten anzuzeigen.</p>
+    <p class="text-slate-400">Wähle einen Ort auf der Karte aus und lege den Zeitraum für die Wetteranalyse fest.</p>
     <div id="map" class="mt-6 overflow-hidden rounded-lg border border-slate-700" style="height: 420px;"
          data-selected-latitude="{{ latitude if latitude is defined else '' }}"
          data-selected-longitude="{{ longitude if longitude is defined else '' }}"
@@ -20,32 +20,49 @@
                value="{{ latitude if latitude is defined else '' }}">
         <input id="longitude" type="hidden" name="longitude"
                value="{{ longitude if longitude is defined else '' }}">
-        <button id="show-weather-data" type="submit"
-                class="mt-4 rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400"
-                {% if latitude is not defined %}disabled{% endif %}>
-            Wetterdaten ansehen
-        </button>
+        <div class="mt-4 flex flex-wrap items-end gap-4">
+            <label class="flex flex-col gap-1 text-slate-300">
+                Startdatum
+                <input type="date" name="start_date" required
+                       value="{{ start_date if start_date is defined else '' }}"
+                       class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+            </label>
+            <label class="flex flex-col gap-1 text-slate-300">
+                Enddatum
+                <input type="date" name="end_date" required
+                       value="{{ end_date if end_date is defined else '' }}"
+                       class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+            </label>
+            <button id="show-weather-data" type="submit"
+                    class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400"
+                    {% if latitude is not defined %}disabled{% endif %}>
+                Wetterdaten laden und anzeigen
+            </button>
+        </div>
     </form>
     {% if latitude is defined %}
         <p class="mt-4 text-emerald-400" aria-live="polite">
             Ausgewählter Ort: {{ '%.6f'|format(latitude) }}, {{ '%.6f'|format(longitude) }}
         </p>
-        <section class="mt-4" aria-live="polite">
-            <h2 class="font-semibold text-white">Stationen im Umkreis von 50 km</h2>
-            {% if stations %}
-                <p class="mt-2 text-slate-300">{{ stations|length }} Station(en) gefunden:</p>
-                <ul class="mt-2 list-inside list-disc text-slate-300">
-                    {% for station in stations %}
-                        <li>{{ station.name }} ({{ '%.1f'|format(station.distance_km)|replace('.', ',') }} km)</li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="mt-2 text-slate-300">Keine Stationen im Umkreis gefunden.</p>
-            {% endif %}
-        </section>
+        {% if stations is defined %}
+            <section class="mt-4" aria-live="polite">
+                <h2 class="font-semibold text-white">Bis zu fünf nächste Stationen im Umkreis von 50 km</h2>
+                {% if stations %}
+                    <p class="mt-2 text-slate-300">{{ stations|length }} Station(en) berücksichtigt:</p>
+                    <ul class="mt-2 list-inside list-disc text-slate-300">
+                        {% for station in stations %}
+                            <li>{{ station.name }} ({{ '%.1f'|format(station.distance_km)|replace('.', ',') }} km)</li>
+                        {% endfor %}
+                    </ul>
+                    <p class="mt-2 text-slate-400">Die Messwerte werden nach Entfernung gewichtet (1 / km).</p>
+                {% else %}
+                    <p class="mt-2 text-slate-300">Keine Stationen im Umkreis gefunden.</p>
+                {% endif %}
+            </section>
+        {% endif %}
     {% endif %}
     {% if error is defined %}
-        <p class="mt-4 text-emerald-400" role="alert">{{ error }}</p>
+        <p class="mt-4 text-rose-400" role="alert">{{ error }}</p>
     {% endif %}
     {% if import_message is defined %}
         <p class="mt-4 text-emerald-400" aria-live="polite">{{ import_message }}</p>
@@ -55,6 +72,13 @@
             <p class="mt-4 text-emerald-400">{{ messages|join(' ') }}</p>
         {% endif %}
     {% endwith %}
+    {% if chart_data %}
+        {% include 'components/chart.html' %}
+    {% elif stations is defined %}
+        <p class="mt-6 text-slate-300" aria-live="polite">
+            Für den ausgewählten Zeitraum liegen keine darstellbaren Wetterdaten vor.
+        </p>
+    {% endif %}
     <form action="{{ url_for('main.import_stations') }}" method="post" class="mt-6">
         <button type="submit" class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400">
             Stationen importieren
@@ -66,4 +90,8 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+{% if chart_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/weather-chart.js') }}"></script>
+{% endif %}
 {% endblock %}
