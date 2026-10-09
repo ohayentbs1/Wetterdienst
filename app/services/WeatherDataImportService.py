@@ -10,7 +10,7 @@ from urllib.request import urlopen
 from flask import current_app
 
 from app import db
-from app.models import WeatherData
+from app.models import Station, WeatherData
 
 
 DWD_URL = (
@@ -26,11 +26,19 @@ BATCH_SIZE = 1000
 MAX_DOWNLOAD_WORKERS = 5
 
 
-class WeatherDataController:
-    def import_for_stations(self, stations):
+class WeatherDataImportService:
+
+    def import_for_stations(self, stations: list[Station]) -> int:
+        stations_to_import = [
+            station for station in stations
+            if not self.has_weather_data(station)
+        ]
+        if not stations_to_import:
+            return 0
+
         archive_directory = Path(current_app.config['DWD_ARCHIVE_DIR'])
         archive_directory.mkdir(parents=True, exist_ok=True)
-        station_ids = {station['station_id'] for station in stations}
+        station_ids = {station.id for station in stations_to_import}
 
         with urlopen(DWD_URL, timeout=30) as response:
             directory = response.read().decode('utf-8')
@@ -68,6 +76,14 @@ class WeatherDataController:
                     imported += self._save_rows(reader, station_id)
 
         return imported
+
+    @staticmethod
+    def has_weather_data(station: Station) -> bool:
+        return db.session.execute(
+            db.select(
+                db.exists().where(WeatherData.STATIONS_ID == station.id)
+            )
+        ).scalar_one()
 
     @staticmethod
     def _download_archive(archive_directory, filename):

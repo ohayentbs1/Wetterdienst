@@ -8,7 +8,11 @@ from app.models import Station
 class StationController:
     SEARCH_RADIUS_KM = 50
 
-    def get_nearby_stations(self, latitude, longitude):
+    def get_nearby_stations(
+        self,
+        latitude: float,
+        longitude: float,
+    ) -> list[tuple[Station, float]]:
         if (
             not math.isfinite(latitude)
             or not math.isfinite(longitude)
@@ -17,7 +21,7 @@ class StationController:
         ):
             raise ValueError('Ungültige Koordinaten.')
 
-        nearby = []
+        nearby: list[tuple[float, Station]] = []
         stations = Station.query.filter(
             Station.geo_breite.isnot(None),
             Station.geo_laenge.isnot(None),
@@ -41,11 +45,4 @@ class StationController:
                 nearby.append((distance_km, station))
 
         nearby.sort(key=lambda entry: (entry[0], entry[1].stationsname))
-        return [
-            {
-                'station_id': station.id,
-                'name': station.stationsname,
-                'distance_km': distance_km,
-            }
-            for distance_km, station in nearby
-        ]
+        return [(station, distance_km) for distance_km, station in nearby]
