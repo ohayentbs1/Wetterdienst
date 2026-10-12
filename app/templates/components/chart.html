@@ -3,6 +3,27 @@
     <h2 id="weather-chart-title" class="mb-4 text-lg font-semibold text-white">
         Gewichtete Wetterwerte vom {{ start_date }} bis {{ end_date }}
     </h2>
+
+    <form method="post" action="{{ url_for('main.change_weather_data') }}" class="mb-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1 text-slate-300">
+                Wetterkategorie
+                <select name="weather_category"
+                        class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                    {% for key, (label, unit) in chart_service_fields.items() %}
+                        <option value="{{ key }}" {% if selected_weather_category == key %}selected{% endif %}>
+                            {{ label }} ({{ unit }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit"
+                    class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400">
+                Anzeigen
+            </button>
+        </div>
+    </form>
+
     <div class="relative h-128">
         <canvas id="weather-chart" role="img"
                 aria-label="Liniendiagramm der gewichteten Wetterwerte nach Tag"></canvas>

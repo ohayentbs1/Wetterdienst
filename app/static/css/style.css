@@ -227,8 +227,8 @@
   .table {
     display: table;
   }
-  .h-\[32rem\] {
-    height: 32rem;
+  .h-128 {
+    height: calc(var(--spacing) * 128);
   }
   .min-h-screen {
     min-height: 100vh;
@@ -259,6 +259,9 @@
   }
   .gap-1 {
     gap: var(--spacing);
+  }
+  .gap-3 {
+    gap: calc(var(--spacing) * 3);
   }
   .gap-4 {
     gap: calc(var(--spacing) * 4);

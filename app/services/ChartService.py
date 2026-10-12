@@ -26,7 +26,13 @@ class ChartService:
         station_distances: dict[int, float],
         start_date: date,
         end_date: date,
+        selected_field: str | None = None,
     ) -> dict:
+        selected_field = (selected_field or 'RSK').upper()
+        if selected_field not in self.CHART_FIELDS:
+            selected_field = 'RSK'
+
+        fields_to_use = [selected_field]
         dates = [
             start_date + timedelta(days=day_offset)
             for day_offset in range((end_date - start_date).days + 1)
@@ -34,7 +40,7 @@ class ChartService:
         labels = [day.isoformat() for day in dates]
         metric_columns = [
             getattr(WeatherData, field)
-            for field in self.CHART_FIELDS
+            for field in fields_to_use
         ]
         rows = []
         if station_distances:
@@ -66,7 +72,7 @@ class ChartService:
             }
         weighted_values = {
             field: {}
-            for field in self.CHART_FIELDS
+            for field in fields_to_use
         }
         for row in rows:
             observation = row._mapping
@@ -75,15 +81,14 @@ class ChartService:
             if weight == 0:
                 continue
             day = observation['MESS_DATUM']
-            for field in self.CHART_FIELDS:
+            for field in fields_to_use:
                 value = observation[field]
                 if value is not None:
-                    weighted_values[field].setdefault(day, []).append(
-                        (value, weight)
-                    )
+                    weighted_values[field].setdefault(day, []).append((value, weight))
 
         datasets = []
-        for field, (label, unit) in self.CHART_FIELDS.items():
+        for field in fields_to_use:
+            label, unit = self.CHART_FIELDS[field]
             values_by_date = weighted_values[field]
             datasets.append({
                 'label': f'{label} ({unit})',
@@ -92,7 +97,11 @@ class ChartService:
                     for day in dates
                 ],
             })
-        return {'labels': labels, 'datasets': datasets}
+        return {
+            'labels': labels,
+            'datasets': datasets,
+            'selected_field': selected_field,
+        }
 
     @staticmethod
     def _weighted_mean(values: list[tuple[float, float]]) -> float | None:
