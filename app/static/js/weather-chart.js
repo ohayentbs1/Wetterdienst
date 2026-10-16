@@ -32,7 +32,7 @@ if (chartDataElement && chartCanvas) {
                 legend: {
                     position: 'top',
                     labels: {
-                        color: '#e2e8f0'
+                        color: '#000000'
                     }
                 }
             },
@@ -41,7 +41,7 @@ if (chartDataElement && chartCanvas) {
                     title: {
                         display: true,
                         text: 'Tag',
-                        color: '#cbd5e1'
+                        color: '#000000'
                     },
                     ticks: {
                         color: '#94a3b8',
@@ -55,7 +55,7 @@ if (chartDataElement && chartCanvas) {
                     title: {
                         display: true,
                         text: 'Messwert (Einheit je Linie)',
-                        color: '#cbd5e1'
+                        color: '#000000'
                     },
                     ticks: {
                         color: '#94a3b8'

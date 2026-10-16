@@ -5,14 +5,14 @@
 {% endblock %}
 
 {% block content %}
-<div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
-    <h1 class="text-2xl font-bold text-white mb-2">Willkommen beim Wetterdienst</h1>
-    <p class="text-slate-400">Wähle einen Ort auf der Karte aus und lege den Zeitraum für die Wetteranalyse fest.</p>
-    <div id="map" class="mt-6 overflow-hidden rounded-lg border border-slate-700" style="height: 420px;"
+<div class="p-6 rounded-xl border shadow-xl">
+    <h1 class="text-2xl font-bold mb-2">Willkommen beim Wetterdienst</h1>
+    <p>Wähle einen Ort auf der Karte aus und lege den Zeitraum für die Wetteranalyse fest.</p>
+    <div id="map" class="mt-6 overflow-hidden rounded-lg border" style="height: 420px;"
          data-selected-latitude="{{ latitude if latitude is defined else '' }}"
          data-selected-longitude="{{ longitude if longitude is defined else '' }}"
          role="application" aria-label="Karte zur Auswahl eines Ortes in Deutschland"></div>
-    <p id="selection-hint" class="mt-4 text-slate-400" aria-live="polite">
+    <p id="selection-hint" class="mt-4" aria-live="polite">
         Klicke auf die Karte, um einen Ort auszuwählen.
     </p>
     <form action="{{ url_for('main.show_weather_data') }}" method="get">
@@ -21,29 +21,29 @@
         <input id="longitude" type="hidden" name="longitude"
                value="{{ longitude if longitude is defined else '' }}">
         <div class="mt-4 flex flex-wrap items-end gap-4">
-            <label class="flex flex-col gap-1 text-slate-300">
+            <label class="flex flex-col gap-1">
                 Aggregation
                 <select name="aggregation_period"
-                        class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                        class="rounded-lg border px-3 py-2 ">
                     <option value="day" {% if selected_aggregation_period == 'day' or selected_aggregation_period is not defined %}selected{% endif %}>Täglich</option>
                     <option value="month" {% if selected_aggregation_period == 'month' %}selected{% endif %}>Monatlich</option>
                     <option value="year" {% if selected_aggregation_period == 'year' %}selected{% endif %}>Jährlich</option>
                 </select>
             </label>
-            <label class="flex flex-col gap-1 text-slate-300">
+            <label class="flex flex-col gap-1">
                 Startdatum
                 <input type="date" name="start_date" required
                        value="{{ start_date if start_date is defined else '' }}"
-                       class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                       class="rounded-lg border px-3 py-2">
             </label>
-            <label class="flex flex-col gap-1 text-slate-300">
+            <label class="flex flex-col gap-1">
                 Enddatum
                 <input type="date" name="end_date" required
                        value="{{ end_date if end_date is defined else '' }}"
-                       class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                       class="rounded-lg border px-3 py-2">
             </label>
             <button id="show-weather-data" type="submit"
-                    class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400"
+                    class="rounded-lg px-4 py-2 font-semibold"
                     {% if latitude is not defined %}disabled{% endif %}>
                 Wetterdaten laden und anzeigen
             </button>
@@ -72,12 +72,12 @@
             {% include 'components/table.html' %}
         {% endif %}
     {% elif stations is defined %}
-        <p class="mt-6 text-slate-300" aria-live="polite">
+        <p class="mt-6" aria-live="polite">
             Für den ausgewählten Zeitraum liegen keine darstellbaren Wetterdaten vor.
         </p>
     {% endif %}
     <form action="{{ url_for('main.import_stations') }}" method="post" class="mt-6">
-        <button type="submit" class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400">
+        <button type="submit" class="rounded-lg px-4 py-2 font-semibold">
             Stationen importieren
         </button>
     </form>

@@ -1,25 +1,25 @@
 <div class="mb-4 flex flex-wrap items-center gap-3">
     <form method="post" action="{{ url_for('main.change_weather_data') }}" class="w-full">
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-700 bg-slate-950 p-3">
-            <div class="inline-flex overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+            <div class="inline-flex overflow-hidden rounded-lg border">
                 <button type="submit"
                         name="display_mode"
                         value="chart"
-                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'chart' or selected_display_mode is not defined %}bg-sky-500 text-white{% else %}bg-slate-900 text-slate-300 hover:bg-slate-800{% endif %}">
+                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'chart' or selected_display_mode is not defined %}bg-gray-500 text-black{% else %}bg-gray-900 text-gray-300{% endif %}">
                     Graph
                 </button>
                 <button type="submit"
                         name="display_mode"
                         value="table"
-                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'table' %}bg-sky-500 text-white{% else %}bg-slate-900 text-slate-300 hover:bg-slate-800{% endif %}">
+                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'table' %}bg-gray-500 text-black{% else %}bg-gray-500 text-gray-300{% endif %}">
                     Tabelle
                 </button>
             </div>
             <div class="flex flex-wrap items-center gap-3">
-                <label class="flex flex-col gap-1 text-sm text-slate-300">
+                <label class="flex flex-col gap-1 text-sm">
                     Wetterkategorie
                     <select name="weather_category"
-                            class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                            class="rounded-lg border px-3 py-2">
                         {% for key, (label, unit) in chart_service_fields.items() %}
                             <option value="{{ key }}" {% if selected_weather_category == key %}selected{% endif %}>
                                 {{ label }} ({{ unit }})
@@ -28,7 +28,7 @@
                     </select>
                 </label>
                 <button type="submit"
-                        class="rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-400">
+                        class="rounded-lg px-4 py-2 font-semibold">
                     Anzeigen
                 </button>
             </div>
