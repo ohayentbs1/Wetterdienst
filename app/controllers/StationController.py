@@ -8,10 +8,10 @@ from flask import flash, redirect, render_template, request, session, url_for
 from geopy.distance import geodesic
 
 from app import db
+from app.enums import AggregationPeriod, DisplayMode, WeatherField
 from app.models import Station
 from app.services.ChartService import ChartService
 from app.services.TableService import TableService
-from app.services.WeatherAggregationService import WeatherAggregationService
 from app.services.WeatherDataImportService import WeatherDataImportService
 
 
@@ -25,13 +25,11 @@ class StationController:
 
     def import_stations(self):
         context = ssl.create_default_context(cafile=certifi.where())
-
         with urlopen(self.STATION_FILE_URL, timeout=30, context=context) as response:
             content = response.read().decode('latin-1')
 
-        lines = content.splitlines()
         stations = []
-        for line_number, line in enumerate(lines[2:], start=3):
+        for line_number, line in enumerate(content.splitlines()[2:], start=3):
             if not line.strip():
                 continue
             if len(line) < 149:
@@ -57,62 +55,27 @@ class StationController:
         db.session.query(Station).delete()
         db.session.add_all(stations)
         db.session.commit()
-        flash(f'{len(stations)} Stationen wurden importiert.')
+        flash(f'{len(stations)} Stationen importiert.')
         return redirect(url_for('main.index'))
 
     def show_weather_data(self):
-        selected_category = (
-            request.args.get('weather_category')
-            or session.get('selected_weather_category')
-            or 'RSK'
-        ).upper()
-        display_mode = self._normalize_display_mode(
-            request.args.get('display_mode')
-            or session.get('selected_display_mode')
-        )
-        aggregation_period = self._normalize_aggregation_period(
-            request.args.get('aggregation_period')
-            or session.get('selected_aggregation_period')
-        )
-        session['selected_display_mode'] = display_mode
-        session['selected_aggregation_period'] = aggregation_period
-        return self._render_weather_data(selected_category, display_mode, aggregation_period)
+        return self._render_page(request.args)
 
     def change_weather_data(self):
-        selected_category = (
-            request.form.get('weather_category')
-            or session.get('selected_weather_category')
-            or 'RSK'
-        ).upper()
-        display_mode = self._normalize_display_mode(
-            request.form.get('display_mode')
-            or session.get('selected_display_mode')
+        return self._render_page(request.form)
+
+    def _render_page(self, payload):
+        selected_category = WeatherField.normalize(payload.get('weather_category')).value
+        display_mode = DisplayMode.normalize(payload.get('display_mode') or session.get('selected_display_mode'))
+        aggregation_period = AggregationPeriod.normalize(
+            payload.get('aggregation_period') or session.get('selected_aggregation_period')
         )
-        aggregation_period = self._normalize_aggregation_period(
-            request.form.get('aggregation_period')
-            or session.get('selected_aggregation_period')
-        )
-        session['selected_weather_category'] = selected_category
-        session['selected_display_mode'] = display_mode
-        session['selected_aggregation_period'] = aggregation_period
-        return self._render_category_only(selected_category, display_mode, aggregation_period)
 
-    @staticmethod
-    def _normalize_display_mode(display_mode: str | None) -> str:
-        normalized = (display_mode or 'chart').lower()
-        return normalized if normalized in {'chart', 'table'} else 'chart'
-
-    @staticmethod
-    def _normalize_aggregation_period(aggregation_period: str | None) -> str:
-        normalized = (aggregation_period or 'day').lower()
-        return normalized if normalized in WeatherAggregationService.VALID_PERIODS else 'day'
-
-    def _render_weather_data(self, selected_category: str, display_mode: str, aggregation_period: str):
-        if request.args.get('latitude') and request.args.get('longitude'):
-            session['latitude'] = float(request.args['latitude'])
-            session['longitude'] = float(request.args['longitude'])
-            session['start_date'] = request.args['start_date']
-            session['end_date'] = request.args['end_date']
+        if payload.get('latitude') and payload.get('longitude'):
+            session['latitude'] = float(payload['latitude'])
+            session['longitude'] = float(payload['longitude'])
+            session['start_date'] = payload['start_date']
+            session['end_date'] = payload['end_date']
 
         latitude = session.get('latitude')
         longitude = session.get('longitude')
@@ -124,45 +87,34 @@ class StationController:
                 'index.html',
                 error='Bitte zuerst einen Ort und einen Zeitraum auswählen.',
                 selected_weather_category=selected_category,
-                selected_display_mode=display_mode,
-                selected_aggregation_period=aggregation_period,
+                selected_display_mode=display_mode.value,
+                selected_aggregation_period=aggregation_period.value,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
         try:
             latitude = float(latitude)
             longitude = float(longitude)
-            start_date = self._parse_selected_date(start_date_raw)
-            end_date = self._parse_selected_date(end_date_raw)
+            start_date = self._parse_date_value(start_date_raw)
+            end_date = self._parse_date_value(end_date_raw)
             if start_date > end_date:
-                return render_template(
-                    'index.html',
-                    latitude=latitude,
-                    longitude=longitude,
-                    start_date=start_date_raw,
-                    end_date=end_date_raw,
-                    error='Das Startdatum muss vor oder auf dem Enddatum liegen.',
-                    selected_weather_category=selected_category,
-                    selected_display_mode=display_mode,
-                    selected_aggregation_period=aggregation_period,
-                    chart_service_fields=ChartService.CHART_FIELDS,
-                ), 400
-        except (TypeError, ValueError):
+                raise ValueError('Das Startdatum muss vor oder auf dem Enddatum liegen.')
+        except ValueError as error:
             return render_template(
                 'index.html',
                 latitude=latitude,
                 longitude=longitude,
                 start_date=start_date_raw,
                 end_date=end_date_raw,
-                error='Bitte gib ein gültiges Start- und Enddatum an.',
+                error=str(error) if str(error) else 'Bitte gib ein gültiges Start- und Enddatum an.',
                 selected_weather_category=selected_category,
-                selected_display_mode=display_mode,
-                selected_aggregation_period=aggregation_period,
+                selected_display_mode=display_mode.value,
+                selected_aggregation_period=aggregation_period.value,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
         try:
-            nearby_station_results = self.get_nearby_stations(latitude, longitude)
+            nearby = self.get_nearby_stations(latitude, longitude)[: self.MAX_STATIONS]
         except ValueError:
             return render_template(
                 'index.html',
@@ -170,52 +122,40 @@ class StationController:
                 start_date=start_date_raw,
                 end_date=end_date_raw,
                 selected_weather_category=selected_category,
-                selected_display_mode=display_mode,
-                selected_aggregation_period=aggregation_period,
+                selected_display_mode=display_mode.value,
+                selected_aggregation_period=aggregation_period.value,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
-        nearby_station_results = nearby_station_results[:self.MAX_STATIONS]
-        station_objects = []
-        stations_for_display = []
-        station_distances = {}
-        for station, distance_km in nearby_station_results:
-            station_objects.append(station)
-            station_distances[station.id] = distance_km
-            stations_for_display.append({
-                'name': station.stationsname,
-                'distance_km': distance_km,
-            })
+        station_distances = {station.id: distance_km for station, distance_km in nearby}
+        stations_for_display = [
+            {'name': station.stationsname, 'distance_km': distance_km}
+            for station, distance_km in nearby
+        ]
 
-        self._store_station_context(station_distances, stations_for_display)
         session['selected_weather_category'] = selected_category
-        session['selected_display_mode'] = display_mode
-        session['selected_aggregation_period'] = aggregation_period
+        session['selected_display_mode'] = display_mode.value
+        session['selected_aggregation_period'] = aggregation_period.value
 
-        imported_count = WeatherDataImportService().import_for_stations(station_objects)
+        imported_count = WeatherDataImportService().import_for_stations([station for station, _ in nearby])
         chart_data = ChartService().get_chart_data(
             station_distances,
             start_date,
             end_date,
             selected_field=selected_category,
-            aggregation_period=aggregation_period,
+            aggregation_period=aggregation_period.value,
         )
         table_data = TableService().get_table_data(
             station_distances,
             start_date,
             end_date,
             selected_field=selected_category,
-            aggregation_period=aggregation_period,
+            aggregation_period=aggregation_period.value,
         )
-        has_chart_data = any(
-            value is not None
-            for dataset in chart_data['datasets']
-            for value in dataset['data']
-        )
-        has_table_data = any(
-            row['value'] is not None
-            for row in table_data['rows']
-        )
+
+        has_chart_data = any(value is not None for dataset in chart_data['datasets'] for value in dataset['data'])
+        has_table_data = any(row['value'] is not None for row in table_data['rows'])
+
         return render_template(
             'index.html',
             latitude=latitude,
@@ -227,162 +167,19 @@ class StationController:
             chart_data=chart_data if has_chart_data else None,
             table_data=table_data if has_table_data else None,
             selected_weather_category=selected_category,
-            selected_display_mode=display_mode,
-            selected_aggregation_period=aggregation_period,
-            chart_service_fields=ChartService.CHART_FIELDS,
-        )
-
-    def _render_category_only(self, selected_category: str, display_mode: str, aggregation_period: str):
-        latitude = session.get('latitude')
-        longitude = session.get('longitude')
-        start_date_raw = session.get('start_date')
-        end_date_raw = session.get('end_date')
-
-        if latitude is None or longitude is None or not start_date_raw or not end_date_raw:
-            return render_template(
-                'index.html',
-                error='Bitte zuerst einen Ort und einen Zeitraum auswählen.',
-                selected_weather_category=selected_category,
-                selected_display_mode=display_mode,
-                selected_aggregation_period=aggregation_period,
-                chart_service_fields=ChartService.CHART_FIELDS,
-            ), 400
-
-        try:
-            latitude = float(latitude)
-            longitude = float(longitude)
-            start_date = self._parse_selected_date(start_date_raw)
-            end_date = self._parse_selected_date(end_date_raw)
-            if start_date > end_date:
-                return render_template(
-                    'index.html',
-                    latitude=latitude,
-                    longitude=longitude,
-                    start_date=start_date_raw,
-                    end_date=end_date_raw,
-                    error='Das Startdatum muss vor oder auf dem Enddatum liegen.',
-                    selected_weather_category=selected_category,
-                    selected_display_mode=display_mode,
-                    selected_aggregation_period=aggregation_period,
-                    chart_service_fields=ChartService.CHART_FIELDS,
-                ), 400
-        except (TypeError, ValueError):
-            return render_template(
-                'index.html',
-                latitude=latitude,
-                longitude=longitude,
-                start_date=start_date_raw,
-                end_date=end_date_raw,
-                error='Bitte gib ein gültiges Start- und Enddatum an.',
-                selected_weather_category=selected_category,
-                selected_display_mode=display_mode,
-                selected_aggregation_period=aggregation_period,
-                chart_service_fields=ChartService.CHART_FIELDS,
-            ), 400
-
-        station_distances = self._get_stored_station_distances()
-        stations_for_display = session.get('stations_for_display') or []
-
-        if not station_distances:
-            try:
-                nearby_station_results = self.get_nearby_stations(latitude, longitude)
-            except ValueError:
-                return render_template(
-                    'index.html',
-                    error='Ungültige Koordinaten. Bitte wähle einen Ort auf der Karte aus.',
-                    start_date=start_date_raw,
-                    end_date=end_date_raw,
-                    selected_weather_category=selected_category,
-                    selected_display_mode=display_mode,
-                    selected_aggregation_period=aggregation_period,
-                    chart_service_fields=ChartService.CHART_FIELDS,
-                ), 400
-
-            nearby_station_results = nearby_station_results[:self.MAX_STATIONS]
-            station_distances = {
-                station.id: distance_km
-                for station, distance_km in nearby_station_results
-            }
-            stations_for_display = [
-                {
-                    'name': station.stationsname,
-                    'distance_km': distance_km,
-                }
-                for station, distance_km in nearby_station_results
-            ]
-            self._store_station_context(station_distances, stations_for_display)
-
-        chart_data = ChartService().get_chart_data(
-            station_distances,
-            start_date,
-            end_date,
-            selected_field=selected_category,
-            aggregation_period=aggregation_period,
-        )
-        table_data = TableService().get_table_data(
-            station_distances,
-            start_date,
-            end_date,
-            selected_field=selected_category,
-            aggregation_period=aggregation_period,
-        )
-        has_chart_data = any(
-            value is not None
-            for dataset in chart_data['datasets']
-            for value in dataset['data']
-        )
-        has_table_data = any(
-            row['value'] is not None
-            for row in table_data['rows']
-        )
-        return render_template(
-            'index.html',
-            latitude=latitude,
-            longitude=longitude,
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat(),
-            stations=stations_for_display,
-            chart_data=chart_data if has_chart_data else None,
-            table_data=table_data if has_table_data else None,
-            selected_weather_category=selected_category,
-            selected_display_mode=display_mode,
-            selected_aggregation_period=aggregation_period,
+            selected_display_mode=display_mode.value,
+            selected_aggregation_period=aggregation_period.value,
             chart_service_fields=ChartService.CHART_FIELDS,
         )
 
     @staticmethod
-    def _store_station_context(station_distances: dict[int, float], stations_for_display: list[dict]):
-        session['station_distances'] = {
-            str(station_id): float(distance_km)
-            for station_id, distance_km in station_distances.items()
-        }
-        session['stations_for_display'] = stations_for_display
+    def _parse_date_value(value: str) -> date:
+        parsed = datetime.strptime(value, '%Y-%m-%d').date()
+        if parsed.isoformat() != value:
+            raise ValueError('Bitte gib ein gültiges Start- und Enddatum an.')
+        return parsed
 
-    @staticmethod
-    def _get_stored_station_distances() -> dict[int, float]:
-        stored = session.get('station_distances', {})
-        if not isinstance(stored, dict):
-            return {}
-        try:
-            return {
-                int(station_id): float(distance_km)
-                for station_id, distance_km in stored.items()
-            }
-        except (TypeError, ValueError):
-            return {}
-
-    @staticmethod
-    def _parse_selected_date(value: str) -> date:
-        parsed_date = datetime.strptime(value, '%Y-%m-%d').date()
-        if parsed_date.isoformat() != value:
-            raise ValueError('Ungültiges Datumsformat.')
-        return parsed_date
-
-    def get_nearby_stations(
-        self,
-        latitude: float,
-        longitude: float,
-    ) -> list[tuple[Station, float]]:
+    def get_nearby_stations(self, latitude: float, longitude: float) -> list[tuple[Station, float]]:
         if (
             not math.isfinite(latitude)
             or not math.isfinite(longitude)
@@ -391,7 +188,7 @@ class StationController:
         ):
             raise ValueError('Ungültige Koordinaten.')
 
-        nearby: list[tuple[float, Station]] = []
+        nearby = []
         stations = Station.query.filter(
             Station.geo_breite.isnot(None),
             Station.geo_laenge.isnot(None),
@@ -407,21 +204,16 @@ class StationController:
             ):
                 continue
 
-            distance_km = geodesic(
-                (latitude, longitude),
-                (station.geo_breite, station.geo_laenge),
-            ).km
+            distance_km = geodesic((latitude, longitude), (station.geo_breite, station.geo_laenge)).km
             if distance_km <= self.SEARCH_RADIUS_KM:
-                nearby.append((distance_km, station))
+                nearby.append((station, distance_km))
 
-        nearby.sort(key=lambda entry: (entry[0], entry[1].stationsname))
-        return [(station, distance_km) for distance_km, station in nearby]
+        nearby.sort(key=lambda entry: (entry[1], entry[0].stationsname))
+        return nearby
 
     @staticmethod
     def _parse_date(value, line_number):
         try:
             return datetime.strptime(value, '%Y%m%d').date()
         except ValueError as error:
-            raise ValueError(
-                f'Ungültiges Datum in Stationsdatensatz, Zeile {line_number}.'
-            ) from error
+            raise ValueError(f'Ungültiges Datum in Stationsdatensatz, Zeile {line_number}.') from error

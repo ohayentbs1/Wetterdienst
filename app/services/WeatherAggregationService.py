@@ -4,12 +4,11 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from app import db
+from app.enums import AggregationPeriod, WeatherField
 from app.models import WeatherData
 
 
 class WeatherAggregationService:
-    VALID_PERIODS = {'day', 'month', 'year'}
-
     def get_aggregated_data(
         self,
         station_distances: dict[int, float],
@@ -18,90 +17,60 @@ class WeatherAggregationService:
         selected_field: str,
         aggregation_period: str = 'day',
     ) -> dict:
-        normalized_period = self._normalize_aggregation_period(aggregation_period)
-        selected_field = (selected_field or 'RSK').upper()
-        if selected_field not in self._field_names():
-            selected_field = 'RSK'
+        period_name = AggregationPeriod.normalize(aggregation_period).value
+        field = WeatherField.normalize(selected_field)
+        labels = self._build_labels(start_date, end_date, period_name)
 
-        dates = self._build_periods(start_date, end_date, normalized_period)
-        periods_by_key: dict[str, list[tuple[float, float]]] = defaultdict(list)
+        values_by_period: dict[str, list[tuple[float, float]]] = defaultdict(list)
         rows = []
         if station_distances:
-            metric_column = getattr(WeatherData, selected_field)
             rows = db.session.execute(
                 db.select(
                     WeatherData.MESS_DATUM,
                     WeatherData.STATIONS_ID,
-                    metric_column,
+                    getattr(WeatherData, field.value),
                 ).where(
                     WeatherData.STATIONS_ID.in_(station_distances),
                     WeatherData.MESS_DATUM.between(start_date, end_date),
                 )
             ).all()
 
-        zero_distance_stations = {
-            station_id
+        weights = {
+            station_id: 1.0 / distance if distance else 1.0
             for station_id, distance in station_distances.items()
-            if distance == 0
         }
-        if zero_distance_stations:
-            weights = {
-                station_id: 1.0 if station_id in zero_distance_stations else 0.0
-                for station_id in station_distances
-            }
-        else:
-            weights = {
-                station_id: 1.0 / distance
-                for station_id, distance in station_distances.items()
-            }
 
         for row in rows:
             observation = row._mapping
             station_id = observation['STATIONS_ID']
             weight = weights.get(station_id, 0.0)
-            if weight == 0:
+            value = observation[field.value]
+            if value is None or weight == 0:
                 continue
-            value = observation[selected_field]
-            if value is None:
-                continue
-            period_key = self._group_key(observation['MESS_DATUM'], normalized_period)
-            periods_by_key[period_key].append((value, weight))
+            key = self._group_key(observation['MESS_DATUM'], period_name)
+            values_by_period[key].append((value, weight))
 
-        aggregated_values = []
-        for period in dates:
-            period_key = self._group_key(period, normalized_period)
-            aggregated_values.append(self._weighted_mean(periods_by_key.get(period_key, [])))
+        aggregated_values = [
+            self._weighted_mean(values_by_period.get(self._group_key(period, period_name), []))
+            for period in self._build_periods(start_date, end_date, period_name)
+        ]
 
         return {
-            'selected_field': selected_field,
-            'aggregation_period': normalized_period,
-            'labels': [self._format_label(period, normalized_period) for period in dates],
+            'selected_field': field.value,
+            'aggregation_period': period_name,
+            'labels': labels,
             'values': aggregated_values,
         }
 
     @staticmethod
-    def _field_names() -> set[str]:
-        return {
-            'FX', 'FM', 'RSK', 'SDK', 'SHK_TAG', 'NM', 'VPM', 'PM', 'TMK', 'UPM', 'TXK', 'TNK', 'TGK'
-        }
-
-    @staticmethod
-    def _normalize_aggregation_period(aggregation_period: str | None) -> str:
-        normalized = (aggregation_period or 'day').lower()
-        return normalized if normalized in WeatherAggregationService.VALID_PERIODS else 'day'
-
-    @staticmethod
     def _build_periods(start_date: date, end_date: date, aggregation_period: str) -> list[date]:
-        if aggregation_period == 'day':
-            return [
-                start_date + timedelta(days=day_offset)
-                for day_offset in range((end_date - start_date).days + 1)
-            ]
-        if aggregation_period == 'month':
-            current = date(start_date.year, start_date.month, 1)
-            last_month = date(end_date.year, end_date.month, 1)
+        if aggregation_period == AggregationPeriod.DAY.value:
+            return [start_date + timedelta(days=offset) for offset in range((end_date - start_date).days + 1)]
+        if aggregation_period == AggregationPeriod.MONTH.value:
             months = []
-            while current <= last_month:
+            current = date(start_date.year, start_date.month, 1)
+            last = date(end_date.year, end_date.month, 1)
+            while current <= last:
                 months.append(current)
                 if current.month == 12:
                     current = date(current.year + 1, 1, 1)
@@ -116,25 +85,31 @@ class WeatherAggregationService:
         return years
 
     @staticmethod
+    def _build_labels(start_date: date, end_date: date, aggregation_period: str) -> list[str]:
+        periods = WeatherAggregationService._build_periods(start_date, end_date, aggregation_period)
+        return [WeatherAggregationService._format_label(period, aggregation_period) for period in periods]
+
+    @staticmethod
     def _group_key(day: date, aggregation_period: str) -> str:
-        if aggregation_period == 'month':
+        if aggregation_period == AggregationPeriod.MONTH.value:
             return day.strftime('%Y-%m')
-        if aggregation_period == 'year':
+        if aggregation_period == AggregationPeriod.YEAR.value:
             return str(day.year)
         return day.isoformat()
 
     @staticmethod
     def _format_label(day: date, aggregation_period: str) -> str:
-        if aggregation_period == 'month':
+        if aggregation_period == AggregationPeriod.MONTH.value:
             return day.strftime('%Y-%m')
-        if aggregation_period == 'year':
+        if aggregation_period == AggregationPeriod.YEAR.value:
             return str(day.year)
         return day.isoformat()
 
     @staticmethod
     def _weighted_mean(values: list[tuple[float, float]]) -> float | None:
+        if not values:
+            return None
         total_weight = sum(weight for _, weight in values)
         if total_weight == 0:
             return None
         return sum(value * weight for value, weight in values) / total_weight
-
