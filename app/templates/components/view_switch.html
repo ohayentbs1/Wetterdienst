@@ -17,15 +17,6 @@
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <label class="flex flex-col gap-1 text-sm text-slate-300">
-                    Aggregation
-                    <select name="aggregation_period"
-                            class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
-                        <option value="day" {% if selected_aggregation_period == 'day' or selected_aggregation_period is not defined %}selected{% endif %}>Täglich</option>
-                        <option value="month" {% if selected_aggregation_period == 'month' %}selected{% endif %}>Monatlich</option>
-                        <option value="year" {% if selected_aggregation_period == 'year' %}selected{% endif %}>Jährlich</option>
-                    </select>
-                </label>
-                <label class="flex flex-col gap-1 text-sm text-slate-300">
                     Wetterkategorie
                     <select name="weather_category"
                             class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
