@@ -22,6 +22,15 @@
                value="{{ longitude if longitude is defined else '' }}">
         <div class="mt-4 flex flex-wrap items-end gap-4">
             <label class="flex flex-col gap-1 text-slate-300">
+                Aggregation
+                <select name="aggregation_period"
+                        class="rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-white">
+                    <option value="day" {% if selected_aggregation_period == 'day' or selected_aggregation_period is not defined %}selected{% endif %}>Täglich</option>
+                    <option value="month" {% if selected_aggregation_period == 'month' %}selected{% endif %}>Monatlich</option>
+                    <option value="year" {% if selected_aggregation_period == 'year' %}selected{% endif %}>Jährlich</option>
+                </select>
+            </label>
+            <label class="flex flex-col gap-1 text-slate-300">
                 Startdatum
                 <input type="date" name="start_date" required
                        value="{{ start_date if start_date is defined else '' }}"
@@ -44,36 +53,24 @@
         <p class="mt-4 text-emerald-400" aria-live="polite">
             Ausgewählter Ort: {{ '%.6f'|format(latitude) }}, {{ '%.6f'|format(longitude) }}
         </p>
-        {% if stations is defined %}
-            <section class="mt-4" aria-live="polite">
-                <h2 class="font-semibold text-white">Bis zu fünf nächste Stationen im Umkreis von 50 km</h2>
-                {% if stations %}
-                    <p class="mt-2 text-slate-300">{{ stations|length }} Station(en) berücksichtigt:</p>
-                    <ul class="mt-2 list-inside list-disc text-slate-300">
-                        {% for station in stations %}
-                            <li>{{ station.name }} ({{ '%.1f'|format(station.distance_km)|replace('.', ',') }} km)</li>
-                        {% endfor %}
-                    </ul>
-                    <p class="mt-2 text-slate-400">Die Messwerte werden nach Entfernung gewichtet (1 / km).</p>
-                {% else %}
-                    <p class="mt-2 text-slate-300">Keine Stationen im Umkreis gefunden.</p>
-                {% endif %}
-            </section>
-        {% endif %}
     {% endif %}
     {% if error is defined %}
         <p class="mt-4 text-rose-400" role="alert">{{ error }}</p>
-    {% endif %}
-    {% if import_message is defined %}
-        <p class="mt-4 text-emerald-400" aria-live="polite">{{ import_message }}</p>
     {% endif %}
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <p class="mt-4 text-emerald-400">{{ messages|join(' ') }}</p>
         {% endif %}
     {% endwith %}
-    {% if chart_data %}
-        {% include 'components/chart.html' %}
+    {% if chart_data or table_data %}
+        {% include 'components/view_switch.html' %}
+        {% if selected_display_mode == 'table' and table_data %}
+            {% include 'components/table.html' %}
+        {% elif chart_data %}
+            {% include 'components/chart.html' %}
+        {% elif table_data %}
+            {% include 'components/table.html' %}
+        {% endif %}
     {% elif stations is defined %}
         <p class="mt-6 text-slate-300" aria-live="polite">
             Für den ausgewählten Zeitraum liegen keine darstellbaren Wetterdaten vor.
@@ -90,7 +87,7 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-{% if chart_data %}
+{% if chart_data and selected_display_mode != 'table' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='js/weather-chart.js') }}"></script>
 {% endif %}

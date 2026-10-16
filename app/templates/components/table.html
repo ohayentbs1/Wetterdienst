@@ -1,0 +1,31 @@
+<section class="mt-8 rounded-xl border border-slate-700 bg-slate-900 p-4" aria-labelledby="weather-table-title">
+    <h2 id="weather-table-title" class="mb-4 text-lg font-semibold text-white">
+        Gewichtete Wetterwerte vom {{ start_date }} bis {{ end_date }}
+    </h2>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full border-collapse border border-slate-700 text-left text-sm text-slate-200">
+            <thead class="bg-slate-800 text-slate-100">
+                <tr>
+                    <th class="border border-slate-700 px-3 py-2">Datum</th>
+                    <th class="border border-slate-700 px-3 py-2">{{ table_data.label }} ({{ table_data.unit }})</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_data.rows %}
+                    <tr class="odd:bg-slate-900 even:bg-slate-950">
+                        <td class="border border-slate-700 px-3 py-2">{{ row.date }}</td>
+                        <td class="border border-slate-700 px-3 py-2">
+                            {% if row.value is not none %}
+                                {{ '%.2f'|format(row.value)|replace('.', ',') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+

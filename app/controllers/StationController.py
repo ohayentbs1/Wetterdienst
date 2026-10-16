@@ -10,6 +10,8 @@ from geopy.distance import geodesic
 from app import db
 from app.models import Station
 from app.services.ChartService import ChartService
+from app.services.TableService import TableService
+from app.services.WeatherAggregationService import WeatherAggregationService
 from app.services.WeatherDataImportService import WeatherDataImportService
 
 
@@ -64,7 +66,17 @@ class StationController:
             or session.get('selected_weather_category')
             or 'RSK'
         ).upper()
-        return self._render_weather_data(selected_category)
+        display_mode = self._normalize_display_mode(
+            request.args.get('display_mode')
+            or session.get('selected_display_mode')
+        )
+        aggregation_period = self._normalize_aggregation_period(
+            request.args.get('aggregation_period')
+            or session.get('selected_aggregation_period')
+        )
+        session['selected_display_mode'] = display_mode
+        session['selected_aggregation_period'] = aggregation_period
+        return self._render_weather_data(selected_category, display_mode, aggregation_period)
 
     def change_weather_data(self):
         selected_category = (
@@ -72,10 +84,30 @@ class StationController:
             or session.get('selected_weather_category')
             or 'RSK'
         ).upper()
+        display_mode = self._normalize_display_mode(
+            request.form.get('display_mode')
+            or session.get('selected_display_mode')
+        )
+        aggregation_period = self._normalize_aggregation_period(
+            request.form.get('aggregation_period')
+            or session.get('selected_aggregation_period')
+        )
         session['selected_weather_category'] = selected_category
-        return self._render_category_only(selected_category)
+        session['selected_display_mode'] = display_mode
+        session['selected_aggregation_period'] = aggregation_period
+        return self._render_category_only(selected_category, display_mode, aggregation_period)
 
-    def _render_weather_data(self, selected_category: str):
+    @staticmethod
+    def _normalize_display_mode(display_mode: str | None) -> str:
+        normalized = (display_mode or 'chart').lower()
+        return normalized if normalized in {'chart', 'table'} else 'chart'
+
+    @staticmethod
+    def _normalize_aggregation_period(aggregation_period: str | None) -> str:
+        normalized = (aggregation_period or 'day').lower()
+        return normalized if normalized in WeatherAggregationService.VALID_PERIODS else 'day'
+
+    def _render_weather_data(self, selected_category: str, display_mode: str, aggregation_period: str):
         if request.args.get('latitude') and request.args.get('longitude'):
             session['latitude'] = float(request.args['latitude'])
             session['longitude'] = float(request.args['longitude'])
@@ -92,6 +124,8 @@ class StationController:
                 'index.html',
                 error='Bitte zuerst einen Ort und einen Zeitraum auswählen.',
                 selected_weather_category=selected_category,
+                selected_display_mode=display_mode,
+                selected_aggregation_period=aggregation_period,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
@@ -109,6 +143,8 @@ class StationController:
                     end_date=end_date_raw,
                     error='Das Startdatum muss vor oder auf dem Enddatum liegen.',
                     selected_weather_category=selected_category,
+                    selected_display_mode=display_mode,
+                    selected_aggregation_period=aggregation_period,
                     chart_service_fields=ChartService.CHART_FIELDS,
                 ), 400
         except (TypeError, ValueError):
@@ -120,6 +156,8 @@ class StationController:
                 end_date=end_date_raw,
                 error='Bitte gib ein gültiges Start- und Enddatum an.',
                 selected_weather_category=selected_category,
+                selected_display_mode=display_mode,
+                selected_aggregation_period=aggregation_period,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
@@ -132,6 +170,8 @@ class StationController:
                 start_date=start_date_raw,
                 end_date=end_date_raw,
                 selected_weather_category=selected_category,
+                selected_display_mode=display_mode,
+                selected_aggregation_period=aggregation_period,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
@@ -149,6 +189,8 @@ class StationController:
 
         self._store_station_context(station_distances, stations_for_display)
         session['selected_weather_category'] = selected_category
+        session['selected_display_mode'] = display_mode
+        session['selected_aggregation_period'] = aggregation_period
 
         imported_count = WeatherDataImportService().import_for_stations(station_objects)
         chart_data = ChartService().get_chart_data(
@@ -156,11 +198,23 @@ class StationController:
             start_date,
             end_date,
             selected_field=selected_category,
+            aggregation_period=aggregation_period,
+        )
+        table_data = TableService().get_table_data(
+            station_distances,
+            start_date,
+            end_date,
+            selected_field=selected_category,
+            aggregation_period=aggregation_period,
         )
         has_chart_data = any(
             value is not None
             for dataset in chart_data['datasets']
             for value in dataset['data']
+        )
+        has_table_data = any(
+            row['value'] is not None
+            for row in table_data['rows']
         )
         return render_template(
             'index.html',
@@ -171,11 +225,14 @@ class StationController:
             stations=stations_for_display,
             import_message=f'{imported_count} neue Wetterdatensätze importiert.',
             chart_data=chart_data if has_chart_data else None,
+            table_data=table_data if has_table_data else None,
             selected_weather_category=selected_category,
+            selected_display_mode=display_mode,
+            selected_aggregation_period=aggregation_period,
             chart_service_fields=ChartService.CHART_FIELDS,
         )
 
-    def _render_category_only(self, selected_category: str):
+    def _render_category_only(self, selected_category: str, display_mode: str, aggregation_period: str):
         latitude = session.get('latitude')
         longitude = session.get('longitude')
         start_date_raw = session.get('start_date')
@@ -186,6 +243,8 @@ class StationController:
                 'index.html',
                 error='Bitte zuerst einen Ort und einen Zeitraum auswählen.',
                 selected_weather_category=selected_category,
+                selected_display_mode=display_mode,
+                selected_aggregation_period=aggregation_period,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
@@ -203,6 +262,8 @@ class StationController:
                     end_date=end_date_raw,
                     error='Das Startdatum muss vor oder auf dem Enddatum liegen.',
                     selected_weather_category=selected_category,
+                    selected_display_mode=display_mode,
+                    selected_aggregation_period=aggregation_period,
                     chart_service_fields=ChartService.CHART_FIELDS,
                 ), 400
         except (TypeError, ValueError):
@@ -214,6 +275,8 @@ class StationController:
                 end_date=end_date_raw,
                 error='Bitte gib ein gültiges Start- und Enddatum an.',
                 selected_weather_category=selected_category,
+                selected_display_mode=display_mode,
+                selected_aggregation_period=aggregation_period,
                 chart_service_fields=ChartService.CHART_FIELDS,
             ), 400
 
@@ -230,6 +293,8 @@ class StationController:
                     start_date=start_date_raw,
                     end_date=end_date_raw,
                     selected_weather_category=selected_category,
+                    selected_display_mode=display_mode,
+                    selected_aggregation_period=aggregation_period,
                     chart_service_fields=ChartService.CHART_FIELDS,
                 ), 400
 
@@ -252,11 +317,23 @@ class StationController:
             start_date,
             end_date,
             selected_field=selected_category,
+            aggregation_period=aggregation_period,
+        )
+        table_data = TableService().get_table_data(
+            station_distances,
+            start_date,
+            end_date,
+            selected_field=selected_category,
+            aggregation_period=aggregation_period,
         )
         has_chart_data = any(
             value is not None
             for dataset in chart_data['datasets']
             for value in dataset['data']
+        )
+        has_table_data = any(
+            row['value'] is not None
+            for row in table_data['rows']
         )
         return render_template(
             'index.html',
@@ -266,7 +343,10 @@ class StationController:
             end_date=end_date.isoformat(),
             stations=stations_for_display,
             chart_data=chart_data if has_chart_data else None,
+            table_data=table_data if has_table_data else None,
             selected_weather_category=selected_category,
+            selected_display_mode=display_mode,
+            selected_aggregation_period=aggregation_period,
             chart_service_fields=ChartService.CHART_FIELDS,
         )
 
