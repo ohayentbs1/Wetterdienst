@@ -5,21 +5,21 @@
                 <button type="submit"
                         name="display_mode"
                         value="chart"
-                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'chart' or selected_display_mode is not defined %}bg-gray-500 text-black{% else %}bg-gray-900 text-gray-300{% endif %}">
+                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'chart' or selected_display_mode is not defined %}bg-gray-500 text-white{% else %}bg-white text-black hover:bg-gray-200 cursor-pointer{% endif %}">
                     Graph
                 </button>
                 <button type="submit"
                         name="display_mode"
                         value="table"
-                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'table' %}bg-gray-500 text-black{% else %}bg-gray-500 text-gray-300{% endif %}">
+                        class="px-4 py-2 text-sm font-medium transition {% if selected_display_mode == 'table'%}bg-gray-500 text-white{% else %}bg-white text-black hover:bg-gray-200 cursor-pointer{% endif %}">
                     Tabelle
                 </button>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                <label class="flex flex-col gap-1 text-sm">
-                    Wetterkategorie
+            <div class="flex flex-wrap gap-3">
+                <label class="flex items-center gap-2">
+                    Wetterkategorie:
                     <select name="weather_category"
-                            class="rounded-lg border px-3 py-2">
+                            class="rounded-lg border px-3 py-1 cursor-pointer">
                         {% for key, (label, unit) in chart_service_fields.items() %}
                             <option value="{{ key }}" {% if selected_weather_category == key %}selected{% endif %}>
                                 {{ label }} ({{ unit }})
@@ -28,7 +28,7 @@
                     </select>
                 </label>
                 <button type="submit"
-                        class="rounded-lg px-4 py-2 font-semibold">
+                        class="rounded-lg px-4 py-2 font-semibold bg-gray-500 text-white cursor-pointer hover:bg-gray-600">
                     Anzeigen
                 </button>
             </div>
