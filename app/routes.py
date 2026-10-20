@@ -1,24 +1,18 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, request
+
 from app.controllers.StationController import StationController
 
 main = Blueprint('main', __name__)
 
 
-@main.route('/')
+@main.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'import_stations':
+            return StationController().import_stations()
+        if action == 'load_weather_data':
+            return StationController().show_weather_data(request.form)
+        return StationController().change_weather_data(request.form)
 
-
-@main.route('/stations/import', methods=['POST'])
-def import_stations():
-    return StationController().import_stations()
-
-
-@main.route('/weather-data')
-def show_weather_data():
-    return StationController().show_weather_data()
-
-
-@main.route('/change-weather-data', methods=['POST'])
-def change_weather_data():
-    return StationController().change_weather_data()
+    return StationController().show_weather_data(request.args)

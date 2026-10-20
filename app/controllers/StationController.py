@@ -58,11 +58,11 @@ class StationController:
         flash(f'{len(stations)} Stationen importiert.')
         return redirect(url_for('main.index'))
 
-    def show_weather_data(self):
-        return self._render_page(request.args)
+    def show_weather_data(self, payload=None):
+        return self._render_page(payload or request.args)
 
-    def change_weather_data(self):
-        return self._render_page(request.form)
+    def change_weather_data(self, payload=None):
+        return self._render_page(payload or request.form)
 
     def _render_page(self, payload):
         selected_category = WeatherField.normalize(payload.get('weather_category')).value

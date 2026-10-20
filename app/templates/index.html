@@ -8,7 +8,8 @@
 <div class="p-6 rounded-xl border shadow-xl">
     <div class="flex justify-between mb-4">
         <h1 class="text-2xl font-bold mb-2">Wetterprojekt ITF24c</h1>
-        <form action="{{ url_for('main.import_stations') }}" method="post">
+        <form action="{{ url_for('main.index') }}" method="post">
+            <input type="hidden" name="action" value="import_stations">
             <button type="submit" class="rounded-lg px-4 py-2 font-semibold bg-gray-500 text-white cursor-pointer hover:bg-gray-600">
                 Stationen importieren
             </button>
@@ -22,7 +23,8 @@
              role="application" aria-label="Karte zur Auswahl eines Ortes in Deutschland">
         </div>
     </div>
-    <form action="{{ url_for('main.show_weather_data') }}" method="get">
+    <form action="{{ url_for('main.index') }}" method="post">
+        <input type="hidden" name="action" value="load_weather_data">
         <input id="latitude" type="hidden" name="latitude"
                value="{{ latitude if latitude is defined else '' }}">
         <input id="longitude" type="hidden" name="longitude"
