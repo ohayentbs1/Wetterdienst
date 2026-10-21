@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 
+from app.controllers.PdfController import PdfController
 from app.controllers.StationController import StationController
 
 main = Blueprint('main', __name__)
@@ -13,6 +14,8 @@ def index():
             return StationController().import_stations()
         if action == 'load_weather_data':
             return StationController().show_weather_data(request.form)
+        if action == 'export_table_pdf':
+            return PdfController().export_table_pdf()
         return StationController().change_weather_data(request.form)
 
     return StationController().show_weather_data(request.args)

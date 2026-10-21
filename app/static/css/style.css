@@ -9,6 +9,8 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
     --color-emerald-400: oklch(76.5% 0.177 163.223);
+    --color-emerald-600: oklch(59.6% 0.145 163.225);
+    --color-emerald-700: oklch(50.8% 0.118 165.612);
     --color-rose-400: oklch(71.2% 0.194 13.428);
     --color-gray-200: oklch(92.8% 0.006 264.531);
     --color-gray-500: oklch(55.1% 0.027 264.364);
@@ -268,6 +270,9 @@
   .justify-between {
     justify-content: space-between;
   }
+  .justify-end {
+    justify-content: flex-end;
+  }
   .gap-1 {
     gap: var(--spacing);
   }
@@ -295,6 +300,9 @@
   .border {
     border-style: var(--tw-border-style);
     border-width: 1px;
+  }
+  .bg-emerald-600 {
+    background-color: var(--color-emerald-600);
   }
   .bg-gray-500 {
     background-color: var(--color-gray-500);
@@ -375,6 +383,9 @@
     background-color: var(--color-white);
   }
   @media (hover: hover) {
+    .hover\:bg-emerald-700:hover {
+      background-color: var(--color-emerald-700);
+    }
     .hover\:bg-gray-200:hover {
       background-color: var(--color-gray-200);
     }
