@@ -54,7 +54,7 @@ class WeatherField(str, Enum):
     TXK = 'TXK'
     TNK = 'TNK'
     TGK = 'TGK'
-    DEFAULT = RSK
+    DEFAULT = TXK
 
     @classmethod
     def normalize(cls, value: str | None) -> 'WeatherField':
