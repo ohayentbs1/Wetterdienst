@@ -19,6 +19,14 @@ def index():
         if payload.get('aggregation_period'):
             session['selected_aggregation_period'] = payload['aggregation_period']
 
+        if payload.get('latitude') and payload.get('longitude'):
+            session['latitude'] = float(payload['latitude'])
+            session['longitude'] = float(payload['longitude'])
+            if payload.get('start_date'):
+                session['start_date'] = payload['start_date']
+            if payload.get('end_date'):
+                session['end_date'] = payload['end_date']
+
         if action == 'import_stations':
             return StationController().import_stations()
         if action == 'load_weather_data':
