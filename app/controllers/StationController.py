@@ -17,7 +17,6 @@ from app.services.WeatherDataImportService import WeatherDataImportService
 
 class StationController:
     SEARCH_RADIUS_KM = 50
-    MAX_STATIONS = 5
     STATION_FILE_URL = (
         'https://opendata.dwd.de/climate_environment/CDC/observations_germany/'
         'climate/daily/kl/historical/KL_Tageswerte_Beschreibung_Stationen.txt'
@@ -113,7 +112,7 @@ class StationController:
             ), 400
 
         try:
-            nearby = self.get_nearby_stations(latitude, longitude)[: self.MAX_STATIONS]
+            nearby = self.get_nearby_stations(latitude, longitude)
         except ValueError:
             return render_template(
                 'index.html',
