@@ -85,7 +85,6 @@ class StationController:
         if latitude is None or longitude is None or not start_date_raw or not end_date_raw:
             return render_template(
                 'index.html',
-                error='Bitte zuerst einen Ort und einen Zeitraum auswählen.',
                 selected_weather_category=selected_category,
                 selected_display_mode=display_mode.value,
                 selected_aggregation_period=aggregation_period.value,
