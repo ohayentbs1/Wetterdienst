@@ -64,7 +64,9 @@ class StationController:
         return self._render_page(payload or request.form)
 
     def _render_page(self, payload):
-        selected_category = WeatherField.normalize(payload.get('weather_category')).value
+        selected_category = WeatherField.normalize(
+            payload.get('weather_category') or session.get('selected_weather_category')
+        ).value
         display_mode = DisplayMode.normalize(payload.get('display_mode') or session.get('selected_display_mode'))
         aggregation_period = AggregationPeriod.normalize(
             payload.get('aggregation_period') or session.get('selected_aggregation_period')
