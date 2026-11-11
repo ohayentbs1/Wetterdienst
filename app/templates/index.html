@@ -69,7 +69,7 @@
 
     {% if chart_data or table_data %}
         {% include 'components/view_switch.html' %}
-        <div class="mt-4 flex justify-end">
+        <div class="mt-4 flex justify-end gap-2">
             <form action="{{ url_for('main.index') }}" method="post" class="inline-flex">
                 <input type="hidden" name="action" value="export_table_pdf">
                 <input type="hidden" name="latitude" value="{{ latitude }}">
@@ -80,6 +80,18 @@
                 <input type="hidden" name="weather_category" value="{{ selected_weather_category }}">
                 <button type="submit" class="rounded-lg px-4 py-2 font-semibold bg-emerald-600 text-white cursor-pointer hover:bg-emerald-700">
                     Daten als PDF exportieren
+                </button>
+            </form>
+            <form action="{{ url_for('main.index') }}" method="post" class="inline-flex">
+                <input type="hidden" name="action" value="export_table_markdown">
+                <input type="hidden" name="latitude" value="{{ latitude }}">
+                <input type="hidden" name="longitude" value="{{ longitude }}">
+                <input type="hidden" name="start_date" value="{{ start_date }}">
+                <input type="hidden" name="end_date" value="{{ end_date }}">
+                <input type="hidden" name="aggregation_period" value="{{ selected_aggregation_period }}">
+                <input type="hidden" name="weather_category" value="{{ selected_weather_category }}">
+                <button type="submit" class="rounded-lg px-4 py-2 font-semibold bg-sky-600 text-white cursor-pointer hover:bg-sky-700">
+                    Daten als Markdown exportieren
                 </button>
             </form>
         </div>
