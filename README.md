@@ -1,5 +1,20 @@
 # Wetterdienst
 
+## Ausgangslage
+
+Der Deutsche Wetterdienst benötigt eine webbasierte Anwendung, die eine Auswertung aller historischen Wetterdaten ermöglicht.
+
+Aspekte:
+* Grundlage der Auswertung: Historische Einzeldaten/Tagesdaten des DWD
+* Download der Tagesdaten aus dem Archiv aus der Anwendung heraus
+* Abspeicherung in Datenbank 
+* Auswertung  
+  * Von … bis … in Tagesbasis / Monatsbasis / Jahresbasis 
+  * Auswertung für beliebigen Ort / für beliebige Adresse in Deutschland. Für eine Adresse, die nicht direkt einer Wetterstation entspricht, sollen die Daten aus benachbarten Wetterstationen zusammengefaßt werden
+* Die Ergebnisdarstellung sollte tabellarisch und in grafischer Form erfolgen
+
+---
+
 ## Projekt lokal aufsetzen
 
 Repository klonen und in das Projektverzeichnis wechseln:
